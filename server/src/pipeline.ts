@@ -27,8 +27,7 @@ export class Pipeline {
   }
 
   public static async processAsset(itemId: string) {
-    const items = DB.getContent();
-    const item = items.find(c => c.id === itemId);
+    const item = DB.getContentItem(itemId);
     if (!item) return;
 
     try {

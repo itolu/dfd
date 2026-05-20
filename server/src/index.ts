@@ -1,9 +1,9 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { DB } from './db';
 import { Pipeline } from './pipeline';
-import { ContentItem, ContentFormat, SyncLog } from './types';
+import { ContentItem, ContentFormat, SyncLog, User } from './types';
 
 dotenv.config();
 
@@ -13,7 +13,41 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// 1. Health check
+// Extend express Request to support custom authenticated keys
+export interface AuthenticatedRequest extends Request {
+  user?: User;
+  token?: string;
+}
+
+// 🛡️ Authentication Gateway Middleware
+const authenticateUser = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required. Authorization token is missing.' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const session = DB.findSessionByToken(token);
+    
+    if (!session) {
+      return res.status(401).json({ error: 'Session has expired or is invalid. Please log in again.' });
+    }
+
+    const user = DB.findUserById(session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Authenticated creator profile could not be located.' });
+    }
+
+    (req as AuthenticatedRequest).user = user;
+    (req as AuthenticatedRequest).token = token;
+    next();
+  } catch (err: any) {
+    res.status(500).json({ error: 'Internal gateway security check failed.' });
+  }
+};
+
+// 1. Health check (Public Endpoint)
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'healthy',
@@ -22,29 +56,125 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-// 2. Creator Stats
-app.get('/api/creator/stats', (req: Request, res: Response) => {
+// ==========================================
+// 📂 AUTHENTICATION CONTROLLERS (Public)
+// ==========================================
+
+// 2. Creator Registration
+app.post('/api/auth/register', (req: Request, res: Response) => {
   try {
-    const stats = DB.getStats();
-    res.json(stats);
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'All registration parameters (name, email, password) are required.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters in length.' });
+    }
+
+    const user = DB.createUser(name, email, password);
+    const session = DB.createSession(user.id);
+
+    // Omit sensitive credential markers in response
+    const { passwordHash, salt, ...userProfile } = user;
+
+    res.status(201).json({
+      message: 'Creator profile provisioned successfully.',
+      token: session.token,
+      user: userProfile
+    });
   } catch (err: any) {
-    res.status(500).json({ error: 'Failed to retrieve stats.' });
+    res.status(400).json({ error: err.message || 'Registration failed.' });
   }
 });
 
-// 3. Get all uploaded content items
-app.get('/api/content', (req: Request, res: Response) => {
+// 3. Creator Sign In
+app.post('/api/auth/login', (req: Request, res: Response) => {
   try {
-    const content = DB.getContent();
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password credentials are required.' });
+    }
+
+    const user = DB.findUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password credentials.' });
+    }
+
+    const inputHash = DB.hash(password, user.salt);
+    if (inputHash !== user.passwordHash) {
+      return res.status(401).json({ error: 'Invalid email or password credentials.' });
+    }
+
+    const session = DB.createSession(user.id);
+    const { passwordHash, salt, ...userProfile } = user;
+
+    res.json({
+      message: 'Sign in successful.',
+      token: session.token,
+      user: userProfile
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Sign in operation failed.' });
+  }
+});
+
+// 4. Creator Sign Out (Invalidate session)
+app.post('/api/auth/logout', (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      DB.deleteSession(token);
+    }
+    res.json({ message: 'Sign out successful. Token invalidated.' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Sign out operation failed.' });
+  }
+});
+
+// 5. Creator Profile Check
+app.get('/api/auth/me', authenticateUser, (req: Request, res: Response) => {
+  const user = (req as AuthenticatedRequest).user;
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized.' });
+  }
+  const { passwordHash, salt, ...userProfile } = user;
+  res.json(userProfile);
+});
+
+// ==========================================
+// 📂 PORTAL CONTROLLERS (Secure / Gated)
+// ==========================================
+
+// 6. Creator Stats
+app.get('/api/creator/stats', authenticateUser, (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user!;
+    const stats = DB.getStats(user.id);
+    res.json(stats);
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to retrieve creator workspace metrics.' });
+  }
+});
+
+// 7. Get all uploaded content items
+app.get('/api/content', authenticateUser, (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user!;
+    const content = DB.getContent(user.id);
     res.json(content);
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to retrieve content list.' });
   }
 });
 
-// 4. Ingest new asset upload (supports dual real-small & simulated-large payload triggers)
-app.post('/api/content/upload', (req: Request, res: Response) => {
+// 8. Ingest new asset upload
+app.post('/api/content/upload', authenticateUser, (req: Request, res: Response) => {
   try {
+    const user = (req as AuthenticatedRequest).user!;
     const { title, description, format, fileName, sizeBytes, targetTags } = req.body;
 
     if (!title || !format || !fileName || sizeBytes === undefined) {
@@ -56,9 +186,10 @@ app.post('/api/content/upload', (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid content format.' });
     }
 
-    // Initialize content item in queued state
+    // Initialize content item in queued state associated with this creator
     const newItem: ContentItem = {
       id: `c-${Date.now()}`,
+      creatorId: user.id,
       title,
       description: description || '',
       format: format as ContentFormat,
@@ -73,7 +204,7 @@ app.post('/api/content/upload', (req: Request, res: Response) => {
     // Save to database
     DB.addContent(newItem);
 
-    // Asynchronously dispatch pipeline execution (unblocked background execution)
+    // Asynchronously dispatch pipeline execution
     Pipeline.processAsset(newItem.id);
 
     // Return the staged item immediately
@@ -83,8 +214,8 @@ app.post('/api/content/upload', (req: Request, res: Response) => {
   }
 });
 
-// 5. Edge Box registry
-app.get('/api/boxes', (req: Request, res: Response) => {
+// 9. Edge Box registry (Global hardware directory)
+app.get('/api/boxes', authenticateUser, (req: Request, res: Response) => {
   try {
     const boxes = DB.getBoxes();
     res.json(boxes);
@@ -93,19 +224,21 @@ app.get('/api/boxes', (req: Request, res: Response) => {
   }
 });
 
-// 6. Edge Box Sync Logs
-app.get('/api/sync-logs', (req: Request, res: Response) => {
+// 10. Edge Box Sync Logs
+app.get('/api/sync-logs', authenticateUser, (req: Request, res: Response) => {
   try {
-    const logs = DB.getSyncLogs();
+    const user = (req as AuthenticatedRequest).user!;
+    const logs = DB.getSyncLogs(user.id);
     res.json(logs);
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to retrieve sync logs.' });
   }
 });
 
-// 7. Trigger a simulated Edge Box sync schedule event
-app.post('/api/boxes/sync', (req: Request, res: Response) => {
+// 11. Trigger a simulated Edge Box sync schedule event
+app.post('/api/boxes/sync', authenticateUser, (req: Request, res: Response) => {
   try {
+    const user = (req as AuthenticatedRequest).user!;
     const { boxId, syncType } = req.body;
 
     if (!boxId) {
@@ -118,8 +251,8 @@ app.post('/api/boxes/sync', (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Edge Box not found.' });
     }
 
-    // Determine target files based on box enrolledTags
-    const content = DB.getContent().filter(c => c.status === 'ready');
+    // Determine target files based on box enrolledTags and creator content
+    const content = DB.getContent(user.id).filter(c => c.status === 'ready');
     const matchedContent = content.filter(item => 
       item.targetTags.some(tag => box.enrolledTags.includes(tag))
     );
@@ -132,6 +265,7 @@ app.post('/api/boxes/sync', (req: Request, res: Response) => {
 
     const newLog: SyncLog = {
       id: `log-${Date.now()}`,
+      creatorId: user.id,
       boxId,
       boxName: box.name,
       timestamp: new Date().toISOString(),

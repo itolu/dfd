@@ -4,6 +4,7 @@ export type ProcessingStatus = 'queued' | 'validating' | 'transcoding' | 'manife
 
 export interface ContentItem {
   id: string;
+  creatorId: string;
   title: string;
   description: string;
   format: ContentFormat;
@@ -17,6 +18,7 @@ export interface ContentItem {
   targetTags: string[];
   manifest?: ContentManifest;
 }
+
 
 export interface ContentManifest {
   contentId: string;
@@ -43,6 +45,7 @@ export interface EdgeBox {
 
 export interface SyncLog {
   id: string;
+  creatorId: string;
   boxId: string;
   boxName: string;
   timestamp: string;
@@ -58,4 +61,17 @@ export interface CreatorStats {
   totalUploads: number;
   successRate: number; // e.g. 98
   activeBoxesCount: number;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+}
+
+export interface Session {
+  token: string;
+  userId: string;
+  expiresAt: string;
 }

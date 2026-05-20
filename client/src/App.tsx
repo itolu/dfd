@@ -1,13 +1,28 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-import type { ContentItem, EdgeBox, SyncLog, CreatorStats } from './types'
+import type { ContentItem, EdgeBox, SyncLog, CreatorStats, User } from './types'
 
 function App() {
+  const [token, setToken] = useState<string>(() => localStorage.getItem('ileemore_token') || '')
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('ileemore_user')
+    return saved ? JSON.parse(saved) : null
+  })
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'upload' | 'boxes'>('dashboard')
   const [stats, setStats] = useState<CreatorStats | null>(null)
   const [content, setContent] = useState<ContentItem[]>([])
   const [boxes, setBoxes] = useState<EdgeBox[]>([])
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([])
+
+  // Auth form states
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [registerName, setRegisterName] = useState('')
+  const [registerEmail, setRegisterEmail] = useState('')
+  const [registerPassword, setRegisterPassword] = useState('')
+  const [registerConfirmPassword, setRegisterConfirmPassword] = useState('')
 
   // Form states for content upload
   const [title, setTitle] = useState('')
@@ -22,35 +37,158 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [viewManifestItem, setViewManifestItem] = useState<ContentItem | null>(null)
 
-  // Fetch stats and lists from Express APIs
+  // Auth helper methods
+  const handleLogout = () => {
+    if (token) {
+      fetch('http://localhost:5000/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).catch(err => console.error('Logout error on backend:', err))
+    }
+    setToken('')
+    setCurrentUser(null)
+    localStorage.removeItem('ileemore_token')
+    localStorage.removeItem('ileemore_user')
+    showNotice('You have been logged out successfully.', 'info')
+  }
+
+  // Fetch stats and lists from Express APIs (with Token injection)
   const fetchAllData = () => {
-    fetch('http://localhost:5000/api/creator/stats')
-      .then(res => res.json())
-      .then(data => setStats(data))
+    if (!token) return
+
+    const headers = { 'Authorization': `Bearer ${token}` }
+
+    fetch('http://localhost:5000/api/creator/stats', { headers })
+      .then(res => {
+        if (res.status === 401) { handleLogout(); return; }
+        return res.json()
+      })
+      .then(data => data && setStats(data))
       .catch(err => console.error('Error fetching stats:', err))
 
-    fetch('http://localhost:5000/api/content')
-      .then(res => res.json())
-      .then(data => setContent(data))
+    fetch('http://localhost:5000/api/content', { headers })
+      .then(res => {
+        if (res.status === 401) { handleLogout(); return; }
+        return res.json()
+      })
+      .then(data => data && setContent(data))
       .catch(err => console.error('Error fetching content:', err))
 
-    fetch('http://localhost:5000/api/boxes')
-      .then(res => res.json())
-      .then(data => setBoxes(data))
+    fetch('http://localhost:5000/api/boxes', { headers })
+      .then(res => {
+        if (res.status === 401) { handleLogout(); return; }
+        return res.json()
+      })
+      .then(data => data && setBoxes(data))
       .catch(err => console.error('Error fetching boxes:', err))
 
-    fetch('http://localhost:5000/api/sync-logs')
-      .then(res => res.json())
-      .then(data => setSyncLogs(data))
+    fetch('http://localhost:5000/api/sync-logs', { headers })
+      .then(res => {
+        if (res.status === 401) { handleLogout(); return; }
+        return res.json()
+      })
+      .then(data => data && setSyncLogs(data))
       .catch(err => console.error('Error fetching sync logs:', err))
   }
 
   // Initial fetch and 2-second background polling to track async pipeline changes
   useEffect(() => {
-    fetchAllData()
-    const interval = setInterval(fetchAllData, 2000)
-    return () => clearInterval(interval)
-  }, [])
+    if (token) {
+      fetchAllData()
+      const interval = setInterval(fetchAllData, 2000)
+      return () => clearInterval(interval)
+    }
+  }, [token])
+
+  // Login handler
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!loginEmail || !loginPassword) {
+      showNotice('Please provide your email and password.', 'error')
+      return
+    }
+
+    setIsSubmitting(true)
+    fetch('http://localhost:5000/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: loginEmail, password: loginPassword })
+    })
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(data => { throw new Error(data.error || 'Invalid credentials.') })
+        }
+        return res.json()
+      })
+      .then(data => {
+        setToken(data.token)
+        setCurrentUser(data.user)
+        localStorage.setItem('ileemore_token', data.token)
+        localStorage.setItem('ileemore_user', JSON.stringify(data.user))
+        showNotice(`Welcome back, ${data.user.name}!`, 'success')
+        
+        // Reset login form fields
+        setLoginEmail('')
+        setLoginPassword('')
+      })
+      .catch(err => {
+        showNotice(err.message, 'error')
+      })
+      .finally(() => {
+        setIsSubmitting(false)
+      })
+  }
+
+  // Registration handler
+  const handleRegisterSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!registerName || !registerEmail || !registerPassword || !registerConfirmPassword) {
+      showNotice('All registration fields are mandatory.', 'error')
+      return
+    }
+
+    if (registerPassword !== registerConfirmPassword) {
+      showNotice('Passwords do not match. Please verify.', 'error')
+      return
+    }
+
+    if (registerPassword.length < 6) {
+      showNotice('Password must be at least 6 characters in length.', 'error')
+      return
+    }
+
+    setIsSubmitting(true)
+    fetch('http://localhost:5000/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: registerName, email: registerEmail, password: registerPassword })
+    })
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(data => { throw new Error(data.error || 'Registration failed.') })
+        }
+        return res.json()
+      })
+      .then(data => {
+        setToken(data.token)
+        setCurrentUser(data.user)
+        localStorage.setItem('ileemore_token', data.token)
+        localStorage.setItem('ileemore_user', JSON.stringify(data.user))
+        showNotice(`Account created successfully. Welcome, ${data.user.name}!`, 'success')
+        
+        // Reset registration fields
+        setRegisterName('')
+        setRegisterEmail('')
+        setRegisterPassword('')
+        setRegisterConfirmPassword('')
+      })
+      .catch(err => {
+        showNotice(err.message, 'error')
+      })
+      .finally(() => {
+        setIsSubmitting(false)
+      })
+  }
 
   // Quick preset loading helper to demo compliance rules
   const loadPreset = (preset: 'oversized' | 'invalid_zip' | 'valid_video' | 'valid_zip') => {
@@ -59,13 +197,13 @@ function App() {
       setDescription('Uncompressed H.264 video guide covering integration formulas.')
       setFormat('MP4')
       setFileName('calculus_vol2_masterclass_1080p.mp4')
-      setSizeInput('580') // 580MB (exceeds 500MB limit)
+      setSizeInput('580')
       setTagsInput('math, secondary-school, advanced')
     } else if (preset === 'invalid_zip') {
       setTitle('Basic Biology Flashcard Bundle')
       setDescription('Compressed archive of cells diagrams.')
       setFormat('ZIP')
-      setFileName('biology_flashcards_no_index.zip') // triggers no-index.html validation error
+      setFileName('biology_flashcards_no_index.zip')
       setSizeInput('45')
       setTagsInput('biology, science, flashcards')
     } else if (preset === 'valid_video') {
@@ -85,7 +223,7 @@ function App() {
     }
   }
 
-  // Submit hander to start upload pipeline
+  // Submit handler to start upload pipeline
   const handleUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title || !fileName || !sizeInput) {
@@ -123,10 +261,14 @@ function App() {
 
     fetch('http://localhost:5000/api/content/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify(payload)
     })
       .then(res => {
+        if (res.status === 401) { handleLogout(); throw new Error('Session expired.') }
         if (!res.ok) throw new Error('API server ingestion failed.')
         return res.json()
       })
@@ -152,10 +294,14 @@ function App() {
   const triggerBoxSync = (boxId: string, boxName: string) => {
     fetch('http://localhost:5000/api/boxes/sync', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({ boxId, syncType: 'delta' })
     })
       .then(res => {
+        if (res.status === 401) { handleLogout(); throw new Error('Session expired.') }
         if (!res.ok) throw new Error('Failed to trigger synchronization.')
         return res.json()
       })
@@ -179,6 +325,144 @@ function App() {
     return `${Math.round((mb / 1024) * 100) / 100} GB`
   }
 
+  // Render Authentication Portal if not logged in
+  if (!token || !currentUser) {
+    return (
+      <div className="auth-container">
+        <div className="glow-sphere main-glow"></div>
+        <div className="glow-sphere secondary-glow"></div>
+
+        {notification && (
+          <div className={`notification-toast toast-${notification.type}`}>
+            <span className="toast-icon">
+              {notification.type === 'success' && '🟢'}
+              {notification.type === 'error' && '🔴'}
+              {notification.type === 'info' && '🔵'}
+            </span>
+            <span className="toast-message">{notification.message}</span>
+          </div>
+        )}
+
+        <div className="auth-card glass-card">
+          <div className="auth-header">
+            <span className="auth-logo-icon">📚</span>
+            <h1 className="auth-title">Ileemore</h1>
+            <span className="auth-subtitle">
+              {authMode === 'login' 
+                ? 'Sign in to access your offline distribution portal' 
+                : 'Create a creator account to manage edge assets'}
+            </span>
+          </div>
+
+          {authMode === 'login' ? (
+            <form className="auth-form" onSubmit={handleLoginSubmit}>
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input 
+                  type="email" 
+                  className="form-control" 
+                  placeholder="e.g. name@company.com"
+                  value={loginEmail}
+                  onChange={e => setLoginEmail(e.target.value)}
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <input 
+                  type="password" 
+                  className="form-control" 
+                  placeholder="••••••••"
+                  value={loginPassword}
+                  onChange={e => setLoginPassword(e.target.value)}
+                  required 
+                />
+              </div>
+
+              <button type="submit" className="btn btn-primary form-submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Authenticating...' : 'Sign In'}
+              </button>
+            </form>
+          ) : (
+            <form className="auth-form" onSubmit={handleRegisterSubmit}>
+              <div className="form-group">
+                <label className="form-label">Full Name / Academy Name</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="e.g. Kano Math Academy"
+                  value={registerName}
+                  onChange={e => setRegisterName(e.target.value)}
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input 
+                  type="email" 
+                  className="form-control" 
+                  placeholder="e.g. headmaster@academy.org"
+                  value={registerEmail}
+                  onChange={e => setRegisterEmail(e.target.value)}
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Password (Min 6 characters)</label>
+                <input 
+                  type="password" 
+                  className="form-control" 
+                  placeholder="••••••••"
+                  value={registerPassword}
+                  onChange={e => setRegisterPassword(e.target.value)}
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Confirm Password</label>
+                <input 
+                  type="password" 
+                  className="form-control" 
+                  placeholder="••••••••"
+                  value={registerConfirmPassword}
+                  onChange={e => setRegisterConfirmPassword(e.target.value)}
+                  required 
+                />
+              </div>
+
+              <button type="submit" className="btn btn-primary form-submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Creating account...' : 'Create Account'}
+              </button>
+            </form>
+          )}
+
+          <div className="auth-footer">
+            {authMode === 'login' ? (
+              <>
+                New to the platform? 
+                <button className="auth-toggle-link" onClick={() => setAuthMode('register')}>
+                  Create an Account
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account? 
+                <button className="auth-toggle-link" onClick={() => setAuthMode('login')}>
+                  Sign In
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Otherwise, render full Authenticated Workspace Portal
   return (
     <div className="container">
       <div className="glow-sphere main-glow"></div>
@@ -246,6 +530,17 @@ function App() {
               </span>
             </div>
           )}
+
+          <div className="auth-user-badge">
+            <div className="auth-user-info">
+              <span className="auth-user-name">{currentUser.name}</span>
+              <span className="auth-user-email">{currentUser.email}</span>
+            </div>
+          </div>
+
+          <button className="btn-logout" onClick={handleLogout}>
+            🚪 Sign Out
+          </button>
         </aside>
 
         {/* Content Area */}
@@ -584,7 +879,7 @@ function App() {
                   <h3 className="section-title">Recent Sync Activity Log</h3>
                   <div className="sync-timeline">
                     {syncLogs.length === 0 ? (
-                      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No recent synchronization activity.</div>
+                      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No recent synchronization activity for this creator's assets.</div>
                     ) : (
                       syncLogs.map(log => (
                         <div key={log.id} className="timeline-item">

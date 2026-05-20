@@ -1,28 +1,40 @@
 import fs from 'fs';
 import path from 'path';
-import { ContentItem, EdgeBox, SyncLog, CreatorStats } from './types';
+import crypto from 'crypto';
+import { ContentItem, EdgeBox, SyncLog, CreatorStats, User, Session } from './types';
 
 const DB_DIR = path.join(__dirname, '..', 'data');
 const DB_FILE = path.join(DB_DIR, 'db.json');
 
 interface DatabaseSchema {
-  stats: CreatorStats;
+  users: User[];
+  sessions: Session[];
   content: ContentItem[];
   boxes: EdgeBox[];
   syncLogs: SyncLog[];
 }
 
-const DEFAULT_STATS: CreatorStats = {
-  totalStorageUsedBytes: 348127390, // ~332 MB
-  storageLimitBytes: 5368709120,    // 5 GB
-  totalUploads: 4,
-  successRate: 100,
-  activeBoxesCount: 3,
-};
+const DEFAULT_SALT = 'ileemore_seed_salt_2026';
+
+function hashPassword(password: string, salt: string): string {
+  return crypto.createHmac('sha256', salt).update(password).digest('hex');
+}
+
+const DEFAULT_USERS: User[] = [
+  {
+    id: 'creator-001',
+    name: 'Edtech Labs',
+    email: 'creator@ileemore.org',
+    passwordHash: hashPassword('password123', DEFAULT_SALT),
+    salt: DEFAULT_SALT,
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
+  }
+];
 
 const DEFAULT_CONTENT: ContentItem[] = [
   {
     id: 'c-001',
+    creatorId: 'creator-001',
     title: 'Introductory Algebra: Equations & Inequalities',
     description: 'Core secondary school math module detailing linear and quadratic equation solving procedures.',
     format: 'MP4',
@@ -31,7 +43,7 @@ const DEFAULT_CONTENT: ContentItem[] = [
     status: 'ready',
     progress: 100,
     checksum: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     targetTags: ['math', 'secondary-school', 'algebra'],
     manifest: {
       contentId: 'c-001',
@@ -42,12 +54,13 @@ const DEFAULT_CONTENT: ContentItem[] = [
       processedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
       targetDeviceCriteria: {
         enrolledTags: ['math', 'secondary-school'],
-        transcoded: true // Flag indicating it was automatically scaled to 480p H.264
+        transcoded: true
       }
     }
   },
   {
     id: 'c-002',
+    creatorId: 'creator-001',
     title: 'Interactive Physics: Wave Mechanics Lab',
     description: 'HTML5 self-contained simulation enabling students to analyze refraction and frequency behaviors offline.',
     format: 'ZIP',
@@ -56,7 +69,7 @@ const DEFAULT_CONTENT: ContentItem[] = [
     status: 'ready',
     progress: 100,
     checksum: '9d21bc3ff6cfa2b9ad78e1c6628e078e0c128ff0b1d568c0788ebc07e01d2d0c',
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     targetTags: ['physics', 'science', 'interactive'],
     manifest: {
       contentId: 'c-002',
@@ -73,6 +86,7 @@ const DEFAULT_CONTENT: ContentItem[] = [
   },
   {
     id: 'c-003',
+    creatorId: 'creator-001',
     title: 'West African Civilizations: A Historical Guide',
     description: 'High-density educational textbook covering historical trading empires (Mali, Songhai, Ghana).',
     format: 'PDF',
@@ -81,7 +95,7 @@ const DEFAULT_CONTENT: ContentItem[] = [
     status: 'ready',
     progress: 100,
     checksum: 'a81d89b01c3e1e2ff3a4d80a1c9e88bf0a012ff1875c71b12b5e0c52eb6f7df2',
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     targetTags: ['history', 'social-studies', 'west-africa'],
     manifest: {
       contentId: 'c-003',
@@ -98,6 +112,7 @@ const DEFAULT_CONTENT: ContentItem[] = [
   },
   {
     id: 'c-004',
+    creatorId: 'creator-001',
     title: 'Primary English Reading Anthology: Fables & Tales',
     description: 'EPUB compiled collection of standard reading comprehension exercises for early primary levels.',
     format: 'EPUB',
@@ -106,7 +121,7 @@ const DEFAULT_CONTENT: ContentItem[] = [
     status: 'ready',
     progress: 100,
     checksum: '1bc98fd02ad1cf239dfc82307bdc8dfd93f18e9c1c5e62bf078c12b7f0e91da2',
-    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     targetTags: ['english', 'primary-school', 'reading'],
     manifest: {
       contentId: 'c-004',
@@ -129,9 +144,9 @@ const DEFAULT_BOXES: EdgeBox[] = [
     name: 'Kano Central Edge Node',
     deviceCertificateId: 'eb-cert-kano-001-active',
     syncSchedule: '02:00',
-    lastSyncTime: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(), // 18 hrs ago (approx 02:00 local)
+    lastSyncTime: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
     status: 'online',
-    enrolledTags: ['math', 'secondary-school', 'english', 'primary-school', 'algebra']
+    enrolledTags: ['math', 'secondary-school', 'english', 'primary-school', 'algebra', 'chemistry', 'interactive', 'science']
   },
   {
     id: 'box-02',
@@ -156,6 +171,7 @@ const DEFAULT_BOXES: EdgeBox[] = [
 const DEFAULT_SYNC_LOGS: SyncLog[] = [
   {
     id: 'log-001',
+    creatorId: 'creator-001',
     boxId: 'box-01',
     boxName: 'Kano Central Edge Node',
     timestamp: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
@@ -166,6 +182,7 @@ const DEFAULT_SYNC_LOGS: SyncLog[] = [
   },
   {
     id: 'log-002',
+    creatorId: 'creator-001',
     boxId: 'box-03',
     boxName: 'Ibadan Smart Learning Center',
     timestamp: new Date(Date.now() - 17 * 60 * 60 * 1000).toISOString(),
@@ -176,6 +193,7 @@ const DEFAULT_SYNC_LOGS: SyncLog[] = [
   },
   {
     id: 'log-003',
+    creatorId: 'creator-001',
     boxId: 'box-02',
     boxName: 'Enugu Rural Secondary School Hub',
     timestamp: new Date(Date.now() - 43 * 60 * 60 * 1000).toISOString(),
@@ -193,7 +211,8 @@ export class DB {
     }
     if (!fs.existsSync(DB_FILE)) {
       const initialSchema: DatabaseSchema = {
-        stats: DEFAULT_STATS,
+        users: DEFAULT_USERS,
+        sessions: [],
         content: DEFAULT_CONTENT,
         boxes: DEFAULT_BOXES,
         syncLogs: DEFAULT_SYNC_LOGS
@@ -213,9 +232,115 @@ export class DB {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
   }
 
-  public static getStats(): CreatorStats {
+  // --- CRYPTO HELPERS ---
+  public static hash(password: string, salt: string): string {
+    return hashPassword(password, salt);
+  }
+
+  public static generateToken(): string {
+    return crypto.randomBytes(32).toString('hex');
+  }
+
+  // --- USER AUTH MANAGEMENT ---
+  public static createUser(name: string, email: string, passwordPlain: string): User {
     const data = this.read();
-    return data.stats;
+    
+    // Check duplication
+    const exists = data.users.some(u => u.email.toLowerCase() === email.toLowerCase());
+    if (exists) {
+      throw new Error('A creator with this email address already exists.');
+    }
+
+    const salt = crypto.randomBytes(16).toString('hex');
+    const newUser: User = {
+      id: `creator-${Date.now()}`,
+      name,
+      email: email.toLowerCase(),
+      passwordHash: hashPassword(passwordPlain, salt),
+      salt,
+      createdAt: new Date().toISOString()
+    };
+
+    data.users.push(newUser);
+    this.write(data);
+    return newUser;
+  }
+
+  public static findUserByEmail(email: string): User | null {
+    const data = this.read();
+    const user = data.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    return user || null;
+  }
+
+  public static findUserById(id: string): User | null {
+    const data = this.read();
+    const user = data.users.find(u => u.id === id);
+    return user || null;
+  }
+
+  // --- SESSION MANAGEMENT ---
+  public static createSession(userId: string): Session {
+    const data = this.read();
+    
+    // Cleanup expired sessions while we are here
+    const now = Date.now();
+    data.sessions = data.sessions.filter(s => new Date(s.expiresAt).getTime() > now);
+
+    const token = this.generateToken();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 Days
+    
+    const newSession: Session = {
+      token,
+      userId,
+      expiresAt
+    };
+
+    data.sessions.push(newSession);
+    this.write(data);
+    return newSession;
+  }
+
+  public static findSessionByToken(token: string): Session | null {
+    const data = this.read();
+    const session = data.sessions.find(s => s.token === token);
+    if (!session) return null;
+
+    // Check expiration
+    if (new Date(session.expiresAt).getTime() < Date.now()) {
+      // Clean it up
+      data.sessions = data.sessions.filter(s => s.token !== token);
+      this.write(data);
+      return null;
+    }
+
+    return session;
+  }
+
+  public static deleteSession(token: string): void {
+    const data = this.read();
+    data.sessions = data.sessions.filter(s => s.token !== token);
+    this.write(data);
+  }
+
+  // --- CONTENT & STATS MANAGEMENT ---
+  public static getStats(creatorId: string): CreatorStats {
+    const data = this.read();
+    const creatorContent = data.content.filter(c => c.creatorId === creatorId);
+    
+    const totalBytes = creatorContent
+      .filter(c => c.status === 'ready')
+      .reduce((sum, c) => sum + c.sizeBytes, 0);
+    
+    const successCount = creatorContent.filter(c => c.status === 'ready').length;
+    const totalCount = creatorContent.length;
+    
+    return {
+      totalStorageUsedBytes: totalBytes,
+      storageLimitBytes: 5368709120, // 5 GB
+      totalUploads: totalCount,
+      successRate: totalCount > 0 ? Math.round((successCount / totalCount) * 100) : 100,
+      activeBoxesCount: data.boxes.filter(b => b.status === 'online').length
+    };
   }
 
   public static getBoxes(): EdgeBox[] {
@@ -223,12 +348,22 @@ export class DB {
     return data.boxes;
   }
 
-  public static getSyncLogs(): SyncLog[] {
+  public static getSyncLogs(creatorId: string): SyncLog[] {
     const data = this.read();
-    return data.syncLogs;
+    return data.syncLogs.filter(log => log.creatorId === creatorId);
   }
 
-  public static getContent(): ContentItem[] {
+  public static getContent(creatorId: string): ContentItem[] {
+    const data = this.read();
+    return data.content.filter(c => c.creatorId === creatorId);
+  }
+
+  public static getContentItem(id: string): ContentItem | null {
+    const data = this.read();
+    return data.content.find(c => c.id === id) || null;
+  }
+
+  public static getAllContent(): ContentItem[] {
     const data = this.read();
     return data.content;
   }
@@ -236,19 +371,6 @@ export class DB {
   public static addContent(item: ContentItem): ContentItem {
     const data = this.read();
     data.content.unshift(item); // Add to the top of list
-    
-    // Recalculate stats based on content change
-    const totalBytes = data.content
-      .filter(c => c.status === 'ready')
-      .reduce((sum, c) => sum + c.sizeBytes, 0);
-    
-    const successCount = data.content.filter(c => c.status === 'ready').length;
-    const totalCount = data.content.length;
-    
-    data.stats.totalStorageUsedBytes = totalBytes;
-    data.stats.totalUploads = totalCount;
-    data.stats.successRate = totalCount > 0 ? Math.round((successCount / totalCount) * 100) : 100;
-    
     this.write(data);
     return item;
   }
@@ -258,18 +380,6 @@ export class DB {
     const index = data.content.findIndex(c => c.id === item.id);
     if (index !== -1) {
       data.content[index] = item;
-      
-      // Re-evaluate stats
-      const totalBytes = data.content
-        .filter(c => c.status === 'ready')
-        .reduce((sum, c) => sum + c.sizeBytes, 0);
-      
-      const successCount = data.content.filter(c => c.status === 'ready').length;
-      const totalCount = data.content.length;
-      
-      data.stats.totalStorageUsedBytes = totalBytes;
-      data.stats.successRate = totalCount > 0 ? Math.round((successCount / totalCount) * 100) : 100;
-      
       this.write(data);
     }
     return item;
