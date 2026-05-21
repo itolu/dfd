@@ -43,7 +43,7 @@ export class Pipeline {
       const limit = SIZE_LIMITS_BYTES[item.format];
       if (item.sizeBytes > limit) {
         throw new Error(
-          `File exceeds maximum permitted size for format ${item.format}. (Limit: ${limit / (1024 * 1024)}MB)`
+          `This file is too large. Max size is ${limit / (1024 * 1024)}MB.`
         );
       }
 
@@ -55,7 +55,7 @@ export class Pipeline {
                              item.title.toLowerCase().includes('lab') ||
                              item.title.toLowerCase().includes('interactive'));
         if (!hasIndexHtml) {
-          throw new Error('HTML5 ZIP packages must contain an "index.html" file at the root namespace.');
+          throw new Error('ZIP files must contain an "index.html" start page.');
         }
       }
 
@@ -113,7 +113,7 @@ export class Pipeline {
       console.error(`🔴 [Pipeline]: Asset processing failed for ${item.title}: ${error.message}`);
       item.status = 'failed';
       item.progress = 100;
-      item.errorMessage = error.message || 'Fatal file pipeline ingestion error.';
+      item.errorMessage = error.message || 'An error occurred while uploading the file.';
       DB.updateContent(item);
     }
   }

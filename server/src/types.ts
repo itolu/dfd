@@ -17,6 +17,9 @@ export interface ContentItem {
   createdAt: string;
   targetTags: string[];
   manifest?: ContentManifest;
+  approvalStatus?: 'pending' | 'approved';
+  uploaderName?: string;
+  uploaderRole?: 'Owner' | 'Creator';
 }
 
 
@@ -70,6 +73,10 @@ export interface User {
   passwordHash: string;
   salt: string;
   createdAt: string;
+  apiKey: string;
+  role?: 'Owner' | 'Creator';
+  parentId?: string;
+  storageLimitBytes?: number;
 }
 
 export interface Session {

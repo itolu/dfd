@@ -27,7 +27,10 @@ const DEFAULT_USERS: User[] = [
     email: 'creator@ileemore.org',
     passwordHash: hashPassword('password123', DEFAULT_SALT),
     salt: DEFAULT_SALT,
-    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days ago
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
+    apiKey: 'sk_live_eed6e8d538e1467ba60e3a4d',
+    role: 'Owner',
+    storageLimitBytes: 1073741824 // 1 GB default free capacity
   }
 ];
 
@@ -35,8 +38,8 @@ const DEFAULT_CONTENT: ContentItem[] = [
   {
     id: 'c-001',
     creatorId: 'creator-001',
-    title: 'Introductory Algebra: Equations & Inequalities',
-    description: 'Core secondary school math module detailing linear and quadratic equation solving procedures.',
+    title: 'Introduction to Algebra',
+    description: 'A helpful guide explaining how to solve math equations and algebra problems.',
     format: 'MP4',
     fileName: 'intro_algebra_1080p.mp4',
     sizeBytes: 184549376, // 176 MB
@@ -47,7 +50,7 @@ const DEFAULT_CONTENT: ContentItem[] = [
     targetTags: ['math', 'secondary-school', 'algebra'],
     manifest: {
       contentId: 'c-001',
-      title: 'Introductory Algebra: Equations & Inequalities',
+      title: 'Introduction to Algebra',
       format: 'MP4',
       fileChecksum: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
       sizeBytes: 184549376,
@@ -61,8 +64,8 @@ const DEFAULT_CONTENT: ContentItem[] = [
   {
     id: 'c-002',
     creatorId: 'creator-001',
-    title: 'Interactive Physics: Wave Mechanics Lab',
-    description: 'HTML5 self-contained simulation enabling students to analyze refraction and frequency behaviors offline.',
+    title: 'Physics Science Lab',
+    description: 'An interactive lab game to help students learn about physics waves offline.',
     format: 'ZIP',
     fileName: 'physics_waves_lab.zip',
     sizeBytes: 110100480, // 105 MB
@@ -73,7 +76,7 @@ const DEFAULT_CONTENT: ContentItem[] = [
     targetTags: ['physics', 'science', 'interactive'],
     manifest: {
       contentId: 'c-002',
-      title: 'Interactive Physics: Wave Mechanics Lab',
+      title: 'Physics Science Lab',
       format: 'ZIP',
       fileChecksum: '9d21bc3ff6cfa2b9ad78e1c6628e078e0c128ff0b1d568c0788ebc07e01d2d0c',
       sizeBytes: 110100480,
@@ -87,8 +90,8 @@ const DEFAULT_CONTENT: ContentItem[] = [
   {
     id: 'c-003',
     creatorId: 'creator-001',
-    title: 'West African Civilizations: A Historical Guide',
-    description: 'High-density educational textbook covering historical trading empires (Mali, Songhai, Ghana).',
+    title: 'History of West Africa',
+    description: 'A history book about the empires and kingdoms of West Africa.',
     format: 'PDF',
     fileName: 'wa_civilizations_vol1.pdf',
     sizeBytes: 47185920, // 45 MB
@@ -99,7 +102,7 @@ const DEFAULT_CONTENT: ContentItem[] = [
     targetTags: ['history', 'social-studies', 'west-africa'],
     manifest: {
       contentId: 'c-003',
-      title: 'West African Civilizations: A Historical Guide',
+      title: 'History of West Africa',
       format: 'PDF',
       fileChecksum: 'a81d89b01c3e1e2ff3a4d80a1c9e88bf0a012ff1875c71b12b5e0c52eb6f7df2',
       sizeBytes: 47185920,
@@ -113,8 +116,8 @@ const DEFAULT_CONTENT: ContentItem[] = [
   {
     id: 'c-004',
     creatorId: 'creator-001',
-    title: 'Primary English Reading Anthology: Fables & Tales',
-    description: 'EPUB compiled collection of standard reading comprehension exercises for early primary levels.',
+    title: 'English Storybook',
+    description: 'A collection of stories and reading exercises for primary school children.',
     format: 'EPUB',
     fileName: 'primary_english_reading.epub',
     sizeBytes: 6291456, // 6 MB
@@ -125,7 +128,7 @@ const DEFAULT_CONTENT: ContentItem[] = [
     targetTags: ['english', 'primary-school', 'reading'],
     manifest: {
       contentId: 'c-004',
-      title: 'Primary English Reading Anthology: Fables & Tales',
+      title: 'English Storybook',
       format: 'EPUB',
       fileChecksum: '1bc98fd02ad1cf239dfc82307bdc8dfd93f18e9c1c5e62bf078c12b7f0e91da2',
       sizeBytes: 6291456,
@@ -140,51 +143,31 @@ const DEFAULT_CONTENT: ContentItem[] = [
 
 const DEFAULT_BOXES: EdgeBox[] = [
   {
-    id: 'box-01',
-    name: 'Kano Central Edge Node',
-    deviceCertificateId: 'eb-cert-kano-001-active',
-    syncSchedule: '02:00',
-    lastSyncTime: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
-    status: 'online',
-    enrolledTags: ['math', 'secondary-school', 'english', 'primary-school', 'algebra', 'chemistry', 'interactive', 'science']
-  },
-  {
     id: 'box-02',
-    name: 'Enugu Rural Secondary School Hub',
+    name: 'Progressive Intellectual College, Oke Igbo Ondo',
     deviceCertificateId: 'eb-cert-enugu-014-active',
     syncSchedule: '01:30',
     lastSyncTime: new Date(Date.now() - 19 * 60 * 60 * 1000).toISOString(),
-    status: 'offline',
-    enrolledTags: ['math', 'secondary-school', 'history', 'social-studies', 'west-africa']
+    status: 'online',
+    enrolledTags: ['math', 'secondary-school', 'history', 'social-studies', 'west-africa', 'ondo-node']
   },
   {
     id: 'box-03',
-    name: 'Ibadan Smart Learning Center',
+    name: 'The Smart School, Ibadan',
     deviceCertificateId: 'eb-cert-ibadan-007-active',
     syncSchedule: '03:00',
     lastSyncTime: new Date(Date.now() - 17 * 60 * 60 * 1000).toISOString(),
     status: 'online',
-    enrolledTags: ['physics', 'science', 'interactive', 'history', 'social-studies']
+    enrolledTags: ['physics', 'science', 'interactive', 'history', 'social-studies', 'ibadan-node']
   }
 ];
 
 const DEFAULT_SYNC_LOGS: SyncLog[] = [
   {
-    id: 'log-001',
-    creatorId: 'creator-001',
-    boxId: 'box-01',
-    boxName: 'Kano Central Edge Node',
-    timestamp: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
-    type: 'delta',
-    status: 'success',
-    filesSynced: 2,
-    dataTransferMb: 182.0
-  },
-  {
     id: 'log-002',
     creatorId: 'creator-001',
     boxId: 'box-03',
-    boxName: 'Ibadan Smart Learning Center',
+    boxName: 'The Smart School, Ibadan',
     timestamp: new Date(Date.now() - 17 * 60 * 60 * 1000).toISOString(),
     type: 'delta',
     status: 'success',
@@ -195,7 +178,7 @@ const DEFAULT_SYNC_LOGS: SyncLog[] = [
     id: 'log-003',
     creatorId: 'creator-001',
     boxId: 'box-02',
-    boxName: 'Enugu Rural Secondary School Hub',
+    boxName: 'Progressive Intellectual College, Oke Igbo Ondo',
     timestamp: new Date(Date.now() - 43 * 60 * 60 * 1000).toISOString(),
     type: 'full',
     status: 'success',
@@ -252,13 +235,15 @@ export class DB {
     }
 
     const salt = crypto.randomBytes(16).toString('hex');
+    const apiKey = `sk_live_${crypto.randomBytes(12).toString('hex')}`;
     const newUser: User = {
       id: `creator-${Date.now()}`,
       name,
       email: email.toLowerCase(),
       passwordHash: hashPassword(passwordPlain, salt),
       salt,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      apiKey
     };
 
     data.users.push(newUser);
@@ -275,6 +260,12 @@ export class DB {
   public static findUserById(id: string): User | null {
     const data = this.read();
     const user = data.users.find(u => u.id === id);
+    return user || null;
+  }
+
+  public static findUserByApiKey(apiKey: string): User | null {
+    const data = this.read();
+    const user = data.users.find(u => u.apiKey === apiKey);
     return user || null;
   }
 
@@ -322,21 +313,125 @@ export class DB {
     this.write(data);
   }
 
+  // --- COLLABORATIVE ORGANIZATION RESOLUTION ---
+  private static getOrganizationUserIds(userId: string): string[] {
+    const data = this.read();
+    const user = data.users.find(u => u.id === userId);
+    if (!user) return [userId];
+
+    if (user.role === 'Creator' && user.parentId) {
+      const parentId = user.parentId;
+      const siblingIds = data.users.filter(u => u.parentId === parentId).map(u => u.id);
+      return [parentId, ...siblingIds];
+    } else {
+      // Owner
+      const childIds = data.users.filter(u => u.parentId === userId).map(u => u.id);
+      return [userId, ...childIds];
+    }
+  }
+
+  // --- TEAM MEMBER INVITATIONS ---
+  public static inviteTeamMember(ownerId: string, name: string, email: string, passwordPlain: string): User {
+    const data = this.read();
+    const exists = data.users.some(u => u.email.toLowerCase() === email.toLowerCase());
+    if (exists) {
+      throw new Error('A user with this email address already exists.');
+    }
+
+    const salt = crypto.randomBytes(16).toString('hex');
+    const apiKey = `sk_live_${crypto.randomBytes(12).toString('hex')}`;
+    const newCreator: User = {
+      id: `creator-${Date.now()}`,
+      name,
+      email: email.toLowerCase(),
+      passwordHash: hashPassword(passwordPlain, salt),
+      salt,
+      createdAt: new Date().toISOString(),
+      apiKey,
+      role: 'Creator',
+      parentId: ownerId
+    };
+
+    data.users.push(newCreator);
+    this.write(data);
+    return newCreator;
+  }
+
+  public static getTeamMembers(ownerId: string): User[] {
+    const data = this.read();
+    return data.users.filter(u => u.parentId === ownerId);
+  }
+
+  public static buyStorage(ownerId: string, amountGb: number): User {
+    const data = this.read();
+    const index = data.users.findIndex(u => u.id === ownerId);
+    if (index === -1) {
+      throw new Error('Owner profile could not be located.');
+    }
+    
+    const currentLimit = data.users[index].storageLimitBytes !== undefined 
+      ? data.users[index].storageLimitBytes! 
+      : 1073741824;
+    
+    const upgradeBytes = amountGb * 1073741824;
+    data.users[index].storageLimitBytes = currentLimit + upgradeBytes;
+    this.write(data);
+    return data.users[index];
+  }
+
+  // --- CONTENT APPROVAL WORKFLOW ---
+  public static approveContent(contentId: string): ContentItem | null {
+    const data = this.read();
+    const index = data.content.findIndex(c => c.id === contentId);
+    if (index !== -1) {
+      data.content[index].approvalStatus = 'approved';
+      if (data.content[index].manifest) {
+        data.content[index].manifest!.processedAt = new Date().toISOString();
+      }
+      this.write(data);
+      return data.content[index];
+    }
+    return null;
+  }
+
+  public static rejectContent(contentId: string): boolean {
+    const data = this.read();
+    const originalLength = data.content.length;
+    data.content = data.content.filter(c => c.id !== contentId);
+    if (data.content.length !== originalLength) {
+      this.write(data);
+      return true;
+    }
+    return false;
+  }
+
   // --- CONTENT & STATS MANAGEMENT ---
   public static getStats(creatorId: string): CreatorStats {
     const data = this.read();
-    const creatorContent = data.content.filter(c => c.creatorId === creatorId);
+    const orgUserIds = this.getOrganizationUserIds(creatorId);
+    const creatorContent = data.content.filter(c => orgUserIds.includes(c.creatorId));
     
     const totalBytes = creatorContent
-      .filter(c => c.status === 'ready')
+      .filter(c => c.status === 'ready' && c.approvalStatus !== 'pending')
       .reduce((sum, c) => sum + c.sizeBytes, 0);
     
     const successCount = creatorContent.filter(c => c.status === 'ready').length;
     const totalCount = creatorContent.length;
     
+    // Resolve organization storage limit (free default: 1 GB = 1073741824 bytes)
+    let limitBytes = 1073741824;
+    const user = data.users.find(u => u.id === creatorId);
+    if (user) {
+      const ownerId = user.role === 'Creator' && user.parentId ? user.parentId : user.id;
+      const owner = data.users.find(u => u.id === ownerId);
+      if (owner && owner.storageLimitBytes !== undefined) {
+        limitBytes = owner.storageLimitBytes;
+      }
+    }
+    
     return {
       totalStorageUsedBytes: totalBytes,
-      storageLimitBytes: 5368709120, // 5 GB
+      storageLimitBytes: limitBytes,
       totalUploads: totalCount,
       successRate: totalCount > 0 ? Math.round((successCount / totalCount) * 100) : 100,
       activeBoxesCount: data.boxes.filter(b => b.status === 'online').length
@@ -350,12 +445,19 @@ export class DB {
 
   public static getSyncLogs(creatorId: string): SyncLog[] {
     const data = this.read();
-    return data.syncLogs.filter(log => log.creatorId === creatorId);
+    const orgUserIds = this.getOrganizationUserIds(creatorId);
+    return data.syncLogs.filter(log => orgUserIds.includes(log.creatorId));
   }
 
   public static getContent(creatorId: string): ContentItem[] {
     const data = this.read();
-    return data.content.filter(c => c.creatorId === creatorId);
+    const orgUserIds = this.getOrganizationUserIds(creatorId);
+    return data.content.filter(c => orgUserIds.includes(c.creatorId)).map(item => {
+      if (!item.approvalStatus) item.approvalStatus = 'approved';
+      if (!item.uploaderRole) item.uploaderRole = 'Owner';
+      if (!item.uploaderName) item.uploaderName = 'Edtech Labs';
+      return item;
+    });
   }
 
   public static getContentItem(id: string): ContentItem | null {
