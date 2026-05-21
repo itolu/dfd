@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import type { ContentItem, EdgeBox, SyncLog, CreatorStats, User } from './types'
 
+const API_BASE_URL = import.meta.env.DEV ? 'http://localhost:5000' : '';
+
 function App() {
   const [token, setToken] = useState<string>(() => localStorage.getItem('ileemore_token') || '')
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -133,7 +135,7 @@ function App() {
   // Auth helper methods
   const handleLogout = () => {
     if (token) {
-      fetch('http://localhost:5000/api/auth/logout', {
+      fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       }).catch(err => console.error('Logout error on backend:', err))
@@ -151,7 +153,7 @@ function App() {
 
     const headers = { 'Authorization': `Bearer ${token}` }
 
-    fetch('http://localhost:5000/api/creator/stats', { headers })
+    fetch(`${API_BASE_URL}/api/creator/stats`, { headers })
       .then(res => {
         if (res.status === 401) { handleLogout(); return; }
         return res.json()
@@ -159,7 +161,7 @@ function App() {
       .then(data => data && setStats(data))
       .catch(err => console.error('Error fetching stats:', err))
 
-    fetch('http://localhost:5000/api/content', { headers })
+    fetch(`${API_BASE_URL}/api/content`, { headers })
       .then(res => {
         if (res.status === 401) { handleLogout(); return; }
         return res.json()
@@ -167,7 +169,7 @@ function App() {
       .then(data => data && setContent(data))
       .catch(err => console.error('Error fetching content:', err))
 
-    fetch('http://localhost:5000/api/boxes', { headers })
+    fetch(`${API_BASE_URL}/api/boxes`, { headers })
       .then(res => {
         if (res.status === 401) { handleLogout(); return; }
         return res.json()
@@ -175,7 +177,7 @@ function App() {
       .then(data => data && setBoxes(data))
       .catch(err => console.error('Error fetching boxes:', err))
 
-    fetch('http://localhost:5000/api/sync-logs', { headers })
+    fetch(`${API_BASE_URL}/api/sync-logs`, { headers })
       .then(res => {
         if (res.status === 401) { handleLogout(); return; }
         return res.json()
@@ -186,7 +188,7 @@ function App() {
     const userJson = localStorage.getItem('ileemore_user')
     const userObj = userJson ? JSON.parse(userJson) : null
     if (userObj && (userObj.role === 'Owner' || !userObj.role)) {
-      fetch('http://localhost:5000/api/team', { headers })
+      fetch(`${API_BASE_URL}/api/team`, { headers })
         .then(res => {
           if (res.status === 401) { handleLogout(); return; }
           return res.json()
@@ -209,7 +211,7 @@ function App() {
     }
 
     setIsSubmitting(true)
-    fetch('http://localhost:5000/api/team/invite', {
+    fetch(`${API_BASE_URL}/api/team/invite`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -240,7 +242,7 @@ function App() {
   }
 
   const handleApproveContent = (itemId: string) => {
-    fetch(`http://localhost:5000/api/content/${itemId}/approve`, {
+    fetch(`${API_BASE_URL}/api/content/${itemId}/approve`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -263,7 +265,7 @@ function App() {
   const handleRejectContent = (itemId: string) => {
     if (!window.confirm('Are you sure you want to reject and delete this content upload?')) return
 
-    fetch(`http://localhost:5000/api/content/${itemId}/reject`, {
+    fetch(`${API_BASE_URL}/api/content/${itemId}/reject`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -285,7 +287,7 @@ function App() {
 
   const handleBuyStorage = (amountGb: number) => {
     setIsSubmitting(true)
-    fetch('http://localhost:5000/api/creator/buy-storage', {
+    fetch(`${API_BASE_URL}/api/creator/buy-storage`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -331,7 +333,7 @@ function App() {
     }
 
     setIsSubmitting(true)
-    fetch('http://localhost:5000/api/auth/login', {
+    fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: loginEmail, password: loginPassword })
@@ -380,7 +382,7 @@ function App() {
     }
 
     setIsSubmitting(true)
-    fetch('http://localhost:5000/api/auth/register', {
+    fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: registerName, email: registerEmail, password: registerPassword })
@@ -514,7 +516,7 @@ function App() {
       targetTags
     }
 
-    fetch('http://localhost:5000/api/content/upload', {
+    fetch(`${API_BASE_URL}/api/content/upload`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -548,7 +550,7 @@ function App() {
 
   // Action: Trigger a simulated Edge Box sync schedule event
   const triggerBoxSync = (boxId: string, boxName: string) => {
-    fetch('http://localhost:5000/api/boxes/sync', {
+    fetch(`${API_BASE_URL}/api/boxes/sync`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -583,7 +585,7 @@ function App() {
 
   // Health check API Probe & Console Execution Helper
   useEffect(() => {
-    fetch('http://localhost:5000/api/health')
+    fetch(`${API_BASE_URL}/api/health`)
       .then(res => res.json())
       .then(data => {
         if (data.status === 'healthy') {
@@ -628,7 +630,7 @@ function App() {
 
     const startTime = Date.now();
 
-    fetch(`http://localhost:5000/api${endpointPath}`, fetchOptions)
+    fetch(`${API_BASE_URL}/api${endpointPath}`, fetchOptions)
       .then(async res => {
         const bodyText = await res.text();
         let parsedBody = bodyText;
@@ -660,7 +662,7 @@ function App() {
           [secId]: {
             status: 0,
             statusText: 'Network Error',
-            body: `TypeError: Failed to execute network fetch to API Gateway.\nIs the backend server running at http://localhost:5000?\n\nDetails: ${err.message}`,
+            body: `TypeError: Failed to execute network fetch to API Gateway.\nIs the backend server running?\n\nDetails: ${err.message}`,
             headers: {},
             latencyMs: elapsed
           }
@@ -673,7 +675,7 @@ function App() {
 
   const renderCodeSnippet = (_secId: string, apiPath: string, method: 'GET' | 'POST', postBodySample?: any) => {
     const key = currentUser ? (showApiKey ? currentUser.apiKey : 'sk_live_••••••••••••••••••••••••••••••••') : (apiConsoleKeyOverrides['global'] || 'sk_live_guest_sandbox_preview_key');
-    const baseUrl = 'http://localhost:5000/api';
+    const baseUrl = `${API_BASE_URL}/api`;
 
     let codeText = '';
 
@@ -1002,13 +1004,13 @@ function App() {
                             type="text" 
                             readOnly 
                             className="cred-input-code" 
-                            value="http://localhost:5000/api" 
+                            value={`${API_BASE_URL}/api`} 
                           />
                           <button 
                             type="button"
                             className="btn-cred-copy"
                             onClick={() => {
-                              navigator.clipboard.writeText('http://localhost:5000/api');
+                              navigator.clipboard.writeText(`${API_BASE_URL}/api`);
                               showNotice('Base URL copied to clipboard!', 'success');
                             }}
                           >
