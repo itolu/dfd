@@ -155,7 +155,7 @@ function App() {
 
     fetch(`${API_BASE_URL}/api/creator/stats`, { headers })
       .then(res => {
-        if (res.status === 401) { handleLogout(); return; }
+        if (!res.ok) return;
         return res.json()
       })
       .then(data => data && setStats(data))
@@ -163,7 +163,7 @@ function App() {
 
     fetch(`${API_BASE_URL}/api/content`, { headers })
       .then(res => {
-        if (res.status === 401) { handleLogout(); return; }
+        if (!res.ok) return;
         return res.json()
       })
       .then(data => data && setContent(data))
@@ -171,7 +171,7 @@ function App() {
 
     fetch(`${API_BASE_URL}/api/boxes`, { headers })
       .then(res => {
-        if (res.status === 401) { handleLogout(); return; }
+        if (!res.ok) return;
         return res.json()
       })
       .then(data => data && setBoxes(data))
@@ -179,7 +179,7 @@ function App() {
 
     fetch(`${API_BASE_URL}/api/sync-logs`, { headers })
       .then(res => {
-        if (res.status === 401) { handleLogout(); return; }
+        if (!res.ok) return;
         return res.json()
       })
       .then(data => data && setSyncLogs(data))
@@ -190,7 +190,7 @@ function App() {
     if (userObj && (userObj.role === 'Owner' || !userObj.role)) {
       fetch(`${API_BASE_URL}/api/team`, { headers })
         .then(res => {
-          if (res.status === 401) { handleLogout(); return; }
+          if (!res.ok) return;
           return res.json()
         })
         .then(data => data && setTeamMembers(data))
