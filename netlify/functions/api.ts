@@ -1058,7 +1058,9 @@ app.post('/api/boxes/sync', authenticateUser, (req: Request, res: Response) => {
 });
 
 // ============================================================
-// 🚀 EXPORT HANDLER (Netlify Functions v2 via serverless-http)
+// 🚀 EXPORT HANDLER (Netlify Functions via serverless-http)
 // ============================================================
 
-export const handler = serverless(app);
+export const handler = serverless(app, {
+  basePath: '/.netlify/functions/api'
+});
